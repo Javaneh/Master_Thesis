@@ -43,13 +43,17 @@
 //						4. Added inputs from other modules [ issues: there is an
 //							space not needed between : and the first number
 //							of the sensor input ]
+//						5. Modified PmodCLP_Top to change the 1s digits of the
+//							two sensor inputs
+//						6. Increased timing for character delay from 40 us to
+//							80 us (constantly changing to have correct results show up)
 //////////////////////////////////////////////////////////////////////////////////
 
 
 // ==============================================================================
 // 										  Define Module
 // ==============================================================================
-module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC );
+module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC, test );
 
 	// ===========================================================================
 	// 										Port Declarations
@@ -68,6 +72,7 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC 
 	// lcd input signals
 	// signal on connector JB
 	output [ 7:0 ] JB;			//output bus, used for data transfer (DB)
+	output reg [ 3:0 ] test;
 	
 	// signal on connector JC
 	// JC[ 7 ]register selection pin  (RS)
@@ -139,7 +144,7 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC 
 			
 			11:	LCD_CMDS <= { 2'b00, 8'h85 };		// 11, Move cursor to 5 char position, 1st row
 			12:	LCD_CMDS <= { 2'b10, d10_1 };		// 12, 10s digit of sensor1
-			13:	LCD_CMDS <= { 2'b10, d1_1 };		// 13, 1s digit of sensor1
+			13:	begin LCD_CMDS <= { 2'b10, d1_1 };	test <= d1_1[ 3:0 ]; end	// 13, 1s digit of sensor1
 			14:	LCD_CMDS <= { 2'b10, 8'h2E };		// 14, decimal of sensor1
 			15: LCD_CMDS <= { 2'b10, d10ths_1 };	// 15, 10ths digit of sensor1
 			
@@ -185,7 +190,7 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC 
 		( ( stCur == stFunctionSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 4000 		-> 40 us
 		( ( stCur == stDisplayCtrlSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||	// 4000 		-> 40 us
 		( ( stCur == stDisplayClear_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 160000 		-> 1.6 ms
-		( ( stCur == stCharDelay ) && ( count == 21'b000000000111110100000 ) )					// changed to 40 us (4000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		( ( stCur == stCharDelay ) && ( count == 21'b000000011111010000000 ) )					// changed to 160 us (16000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
 		//( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )				// 260000		-> 2.6 ms - Max Delay for character writes and shifts
 	) ? 1'b1 : 1'b0;
 
@@ -321,4 +326,5 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC 
 	assign JC[ 8 ] = LCD_CMDS[ 8 ];
 	assign JB = LCD_CMDS[ 7:0 ];
 	assign JC[ 9 ] = ( stCur == stFunctionSet || stCur == stDisplayCtrlSet || stCur == stDisplayClear || stCur == stActWr ) ? 1'b1 : 1'b0;
+	//assign test = d1_1[ 3:0 ];
 endmodule
