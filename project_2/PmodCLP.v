@@ -53,7 +53,7 @@
 // ==============================================================================
 // 										  Define Module
 // ==============================================================================
-module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC, test );
+module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 
 	// ===========================================================================
 	// 										Port Declarations
@@ -62,12 +62,9 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC,
     input CLK;					// 50 MHz clock input
 	
 	// sensor inputs
-	input [ 7:0 ] d10_1;		// 10s digit of sensor1 input
-	input [ 7:0 ] d1_1;			// 1s digit of sensor1 input
-	input [ 7:0 ] d10ths_1;		// 10ths digit of sensor1 input
-	input [ 7:0 ] d10_2;		// 10s digit of sensor2 input
-	input [ 7:0 ] d1_2;			// 1s digit of sensor2 input
-	input [ 7:0 ] d10ths_2;		// 10ths digit of sensor2 input
+	input [ 7:0 ] d10;		// 10s digit of sensor1 input
+	input [ 7:0 ] d1;			// 1s digit of sensor1 input
+	input [ 7:0 ] d10ths;		// 10ths digit of sensor1 input
 	
 	// lcd input signals
 	// signal on connector JB
@@ -137,22 +134,11 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC,
 			5: 	LCD_CMDS <= { 2'b10, 8'h31 };		// 5, 1
 			6: 	LCD_CMDS <= { 2'b10, 8'h3A };		// 6, :
 			
-			7: 	LCD_CMDS <= { 2'b00, 8'hC0 };		// 7, Move cursor to bottom left
-			8: 	LCD_CMDS <= { 2'b10, 8'h53 };		// 8, S
-			9: 	LCD_CMDS <= { 2'b10, 8'h32 };		// 9, 2
-			10: LCD_CMDS <= { 2'b10, 8'h3A };		// 10, :
-			
-			11:	LCD_CMDS <= { 2'b00, 8'h85 };		// 11, Move cursor to 5 char position, 1st row
-			12:	LCD_CMDS <= { 2'b10, d10_1 };		// 12, 10s digit of sensor1
-			13:	begin LCD_CMDS <= { 2'b10, d1_1 };	test <= d1_1[ 3:0 ]; end	// 13, 1s digit of sensor1
-			14:	LCD_CMDS <= { 2'b10, 8'h2E };		// 14, decimal of sensor1
-			15: LCD_CMDS <= { 2'b10, d10ths_1 };	// 15, 10ths digit of sensor1
-			
-			16:	LCD_CMDS <= { 2'b00, 8'hC5 };		// 11, Move cursor to 5 char position, 2nd row
-			17:	LCD_CMDS <= { 2'b10, d10_2 };		// 12, 10s digit of sensor2
-			18:	LCD_CMDS <= { 2'b10, d1_2 };		// 13, 1s digit of sensor2
-			19:	LCD_CMDS <= { 2'b10, 8'h2E };		// 14, decimal of sensor2
-			20: LCD_CMDS <= { 2'b10, d10ths_2 };	// 15, 10ths digit of sensor2
+			11:	LCD_CMDS <= { 2'b00, 8'h84 };		// 11, Move cursor to 4 char position, 1st row
+			12:	LCD_CMDS <= { 2'b10, d10 };		    // 12, 10s digit of sensor
+			13:	begin LCD_CMDS <= { 2'b10, d1 };	test <= d1[ 3:0 ]; end	// 13, 1s digit of sensor1
+			14:	LCD_CMDS <= { 2'b10, 8'h2E };		// 14, decimal of sensor
+			15: LCD_CMDS <= { 2'b10, d10ths };	    // 15, 10ths digit of sensor
 		endcase
 	end
 	
@@ -190,12 +176,12 @@ module PmodCLP( btnr, CLK, d10_1, d1_1, d10ths_1, d10_2, d1_2, d10ths_2, JB, JC,
 		( ( stCur == stFunctionSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 4000 		-> 40 us
 		( ( stCur == stDisplayCtrlSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||	// 4000 		-> 40 us
 		( ( stCur == stDisplayClear_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 160000 		-> 1.6 ms
-		( ( stCur == stCharDelay ) && ( count == 21'b000000011111010000000 ) )					// changed to 160 us (16000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		( ( stCur == stCharDelay ) && ( count == 21'b000001111101000000000 ) )					// changed to 640 us (64000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
 		//( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )				// 260000		-> 2.6 ms - Max Delay for character writes and shifts
 	) ? 1'b1 : 1'b0;
 
 	// writeDone goes high when all commands have been run	
-	assign writeDone = ( lcd_cmd_ptr == 5'b10101 ) ? 1'b1 : 1'b0;
+	assign writeDone = ( lcd_cmd_ptr == 5'b10000 ) ? 1'b1 : 1'b0;
 
 	// Increments the pointer so the statemachine goes through the commands
 	always @ ( posedge oneUSClk ) begin

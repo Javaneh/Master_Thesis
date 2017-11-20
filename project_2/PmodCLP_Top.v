@@ -26,12 +26,9 @@ module PmodCLP_Top( btnr, CLK, JB, JC, test );
     output [ 9:7 ] JC;
     output [ 3:0 ] test;
     
-    reg [ 7:0 ] d10_1 = 8'h31;
-	reg [ 7:0 ] d1_1 = 8'h30;
-	reg [ 7:0 ] d10ths_1 = 8'h32;
-	reg [ 7:0 ] d10_2 = 8'h33;
-	reg [ 7:0 ] d1_2 = 8'h30;
-	reg [ 7:0 ] d10ths_2 = 8'h34;
+    reg [ 7:0 ] d10 = 8'h30;
+	reg [ 7:0 ] d1 = 8'h30;
+	reg [ 7:0 ] d10ths = 8'h30;
 	reg [ 6:0 ] clkCount = 7'b0000000;
 	reg oneUSClk;	
 	
@@ -44,19 +41,29 @@ module PmodCLP_Top( btnr, CLK, JB, JC, test );
 	       clkCount <= clkCount + 1'b1;
 	end
 	
-	always @ ( posedge oneUSClk ) begin
-		if ( d1_1 == 8'h39 ) begin
-			d1_1 <= 8'h30;
-			d1_2 <= 8'h30;
+	//always @ ( posedge oneUSClk ) begin
+	always @ ( posedge CLK ) begin
+		if ( d10ths == 8'h39 ) begin
+		  if ( d1 == 8'h39 ) begin
+		      if ( d10 == 8'h39 ) begin
+		          d10 <= 8'h30;
+		      end
+		      else begin
+                  d10 <= d10 + 1'b1;
+		          d1 <= 8'h30;
+		          d10ths <= 8'h30;
+		      end
+		  end
+		  else begin
+		      d1 <= d1 + 1'b1;
+		      d10ths <= 8'h30;
+		  end
 		end
-		else begin
-			d1_1 <= d1_1 + 1'b1;
-			d1_2 <= d1_2 + 1'b1;
-		end
+		else
+		  d10ths <= d10ths + 1'b1;
 	end
     
     PmodCLP PmodCLP_mod( .btnr( btnr ), .CLK( CLK ), 
-						.d10_1( d10_1 ), .d1_1( d1_1 ), .d10ths_1( d10ths_1 ),
-						.d10_2( d10_2 ), .d1_2( d1_2 ), .d10ths_2( d10ths_2 ),
+						.d10( d10 ), .d1( d1 ), .d10ths( d10ths ),
 						.JB( JB ), .JC( JC ), .test( test ) );
 endmodule
