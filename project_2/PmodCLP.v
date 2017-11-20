@@ -38,6 +38,8 @@
 //		11/19/2017 (JavanehTaghipour): 
 //						1. Modified character table to personal use
 //						2. Changed parameter to a case statement
+//						3. Tweeked timing for character delay (from 2.6 ms wait to
+//							40 us wait)
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -158,8 +160,9 @@ module PmodCLP( btnr, CLK, JB, JC );
 		( ( stCur == stPowerOn_Delay ) && ( count == 21'b111101000010010000000 ) ) ||			// 2000000	 	-> 20 ms
 		( ( stCur == stFunctionSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 4000 		-> 40 us
 		( ( stCur == stDisplayCtrlSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||	// 4000 		-> 40 us
-		( ( stCur == stDisplayClear_Delay ) && ( count == 21'b000100111000100000000 ) ) ||		// 160000 		-> 1.6 ms
-		( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )					// 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		( ( stCur == stDisplayClear_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 160000 		-> 1.6 ms
+		( ( stCur == stCharDelay ) && ( count == 21'b000000000111110100000 ) )					// changed to 40 us (4000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		//( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )				// 260000		-> 2.6 ms - Max Delay for character writes and shifts
 	) ? 1'b1 : 1'b0;
 
 	// writeDone goes high when all commands have been run	
