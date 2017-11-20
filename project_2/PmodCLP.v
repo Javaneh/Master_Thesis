@@ -47,6 +47,9 @@
 //							two sensor inputs
 //						6. Increased timing for character delay from 40 us to
 //							80 us (constantly changing to have correct results show up)
+//                          Final value found in code is what has been finalized
+//                      7. Splitting LCD_CMDS to two values. One for setup and
+//                          one for sensor digit outputs
 //////////////////////////////////////////////////////////////////////////////////
 
 
@@ -114,35 +117,41 @@ module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 		--  DisplayClear:
 			Bit 1-7 are set	*/
 		
-	reg [ 6:0 ] clkCount = 7'b0000000;
+	reg [ 4:0 ] clkCount = 5'b00000;
 	reg [ 20:0 ] count = 21'b000000000000000000000;	// 21 bit count variable for timing delays
 	wire delayOK;									// High when count has reached the right delay time
 	reg oneUSClk;									// Signal is treated as a 1 MHz clock	
 	reg [ 3:0 ] stCur = stPowerOn_Delay;			// LCD control state machine
 	reg [ 3:0 ] stNext;
 	wire writeDone;									// Command set finish
-	reg [ 9:0 ] LCD_CMDS;
+	reg [ 9:0 ] LCD_CMDS1, LCD_CMDS2;
 	
-	always @ ( lcd_cmd_ptr ) begin
-		case ( lcd_cmd_ptr )
-			0: 	LCD_CMDS <= { 2'b00, 8'h3C };		// 0, Function Set
-			1: 	LCD_CMDS <= { 2'b00, 8'h0C };		// 1, Display ON, Cursor OFF, Blink OFF
-			2: 	LCD_CMDS <= { 2'b00, 8'h01 };		// 2, Clear Display
-			3: 	LCD_CMDS <= { 2'b00, 8'h02 };		// 3, Return Home
+	always @ ( lcd_cmd_ptr1 ) begin
+		case ( lcd_cmd_ptr1 )
+			0: 	LCD_CMDS1 <= { 2'b00, 8'h3C };		// 0, Function Set
+			1: 	LCD_CMDS1 <= { 2'b00, 8'h0C };		// 1, Display ON, Cursor OFF, Blink OFF
+			2: 	LCD_CMDS1 <= { 2'b00, 8'h01 };		// 2, Clear Display
+			3: 	LCD_CMDS1 <= { 2'b00, 8'h02 };		// 3, Return Home
 
-			4: 	LCD_CMDS <= { 2'b10, 8'h53 };		// 4, S
-			5: 	LCD_CMDS <= { 2'b10, 8'h31 };		// 5, 1
-			6: 	LCD_CMDS <= { 2'b10, 8'h3A };		// 6, :
-			
-			11:	LCD_CMDS <= { 2'b00, 8'h84 };		// 11, Move cursor to 4 char position, 1st row
-			12:	LCD_CMDS <= { 2'b10, d10 };		    // 12, 10s digit of sensor
-			13:	begin LCD_CMDS <= { 2'b10, d1 };	test <= d1[ 3:0 ]; end	// 13, 1s digit of sensor1
-			14:	LCD_CMDS <= { 2'b10, 8'h2E };		// 14, decimal of sensor
-			15: LCD_CMDS <= { 2'b10, d10ths };	    // 15, 10ths digit of sensor
+			4: 	LCD_CMDS1 <= { 2'b10, 8'h53 };		// 4, S
+			5: 	LCD_CMDS1 <= { 2'b10, 8'h31 };		// 5, 1
+			6: 	LCD_CMDS1 <= { 2'b10, 8'h3A };		// 6, :
 		endcase
 	end
 	
-	reg [ 4:0 ] lcd_cmd_ptr;
+	always @ ( lcd_cmd_ptr2 ) begin
+	   case ( lcd_cmd_ptr2 )
+	        0: LCD_CMDS2 <= { 2'b00, 8'h85 };		// 0, Move cursor to 5 char position, 1st row
+	        1: LCD_CMDS2 <= { 2'b10, d10 };		    // 1, 10s digit of sensor
+	        2: LCD_CMDS2 <= { 2'b00, 8'h86 };		// 2, Move cursor to 6 char position, 1st row
+	        3: LCD_CMDS2 <= { 2'b10, d1 };          // 3, 1s digit of sensor
+	        4: LCD_CMDS2 <= { 2'b10, 8'h2E };		// 4, decimal of sensor
+	        5: LCD_CMDS2 <= { 2'b00, 8'h88 };       // 5, Move cursor to 8 char position, 1st row
+	        6: LCD_CMDS2 <= { 2'b10, d10ths };      // 6, 10ths digit of sensor
+	   endcase
+	end
+	
+	reg [ 2:0 ] lcd_cmd_ptr1, lcd_cmd_ptr2;
 
 	// ===========================================================================
 	// 										Implementation
@@ -151,8 +160,8 @@ module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 	// This process counts to 100, and then resets.  It is used to divide the clock signal.
 	// This makes oneUSClock peak aprox. once every 1microsecond
 	always @ ( posedge CLK ) begin
-		if ( clkCount == 7'b0110010 ) begin // used to be 7'b1100100
-			clkCount <= 7'b0000000;
+		if ( clkCount == 5'b11000 ) begin // used to be 7'b1100100
+			clkCount <= 5'b00000;
 			oneUSClk <= ~oneUSClk;
 		end
 		else begin
@@ -176,26 +185,31 @@ module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 		( ( stCur == stFunctionSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 4000 		-> 40 us
 		( ( stCur == stDisplayCtrlSet_Delay ) && ( count == 21'b000000000111110100000 ) ) ||	// 4000 		-> 40 us
 		( ( stCur == stDisplayClear_Delay ) && ( count == 21'b000000000111110100000 ) ) ||		// 160000 		-> 1.6 ms
-		( ( stCur == stCharDelay ) && ( count == 21'b000001111101000000000 ) )					// changed to 640 us (64000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
-		//( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )				// 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		//( ( stCur == stCharDelay ) && ( count == 21'b000001111101000000000 ) )					// changed to 640 us (64000) 260000		-> 2.6 ms - Max Delay for character writes and shifts
+		( ( stCur == stCharDelay ) && ( count == 21'b000111111011110100000 ) )				// 260000		-> 2.6 ms - Max Delay for character writes and shifts
 	) ? 1'b1 : 1'b0;
 
 	// writeDone goes high when all commands have been run	
-	assign writeDone = ( lcd_cmd_ptr == 5'b10000 ) ? 1'b1 : 1'b0;
+	assign writeDone = ( lcd_cmd_ptr1 == 3'b111 ) ? 1'b1 : 1'b0;
 
 	// Increments the pointer so the statemachine goes through the commands
 	always @ ( posedge oneUSClk ) begin
 		if ( ( stNext == stInitDne || stNext == stDisplayCtrlSet || stNext == stDisplayClear ) && writeDone == 1'b0 ) begin
-			lcd_cmd_ptr <= lcd_cmd_ptr + 1'b1;
+			lcd_cmd_ptr1 <= lcd_cmd_ptr1 + 1'b1;
 		end
-		else if ( writeDone ) begin
-			lcd_cmd_ptr <= 5'b01011;
+		else if ( ( stNext == stInitDne || stNext == stDisplayCtrlSet || stNext == stDisplayClear ) && writeDone ) begin
+			if ( lcd_cmd_ptr2 == 3'b111 ) 
+			   lcd_cmd_ptr2 <= 3'b000;
+			else
+			   lcd_cmd_ptr2 <= lcd_cmd_ptr2 + 1'b1;
 		end
 		else if( stCur == stPowerOn_Delay || stNext == stPowerOn_Delay ) begin
-			lcd_cmd_ptr <= 5'b00000;
+			lcd_cmd_ptr1 <= 3'b000;
+			lcd_cmd_ptr2 <= 3'b000;
 		end
 		else begin
-			lcd_cmd_ptr <= lcd_cmd_ptr;
+			lcd_cmd_ptr1 <= lcd_cmd_ptr1;
+			lcd_cmd_ptr2 <= lcd_cmd_ptr2;
 		end
 	end
 	
@@ -210,7 +224,7 @@ module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 	end
 
 	// This process generates the sequence of outputs needed to initialize and write to the LCD screen
-	always @ ( stCur or delayOK or writeDone or lcd_cmd_ptr ) begin
+	always @ ( stCur or delayOK or writeDone or lcd_cmd_ptr1 or lcd_cmd_ptr2 ) begin
 		case (stCur)
 			// Delays the state machine for 20ms which is needed for proper startup.
 			stPowerOn_Delay: 
@@ -308,9 +322,9 @@ module PmodCLP( btnr, CLK, d10, d1, d10ths, JB, JC, test );
 	end
 		
 	// Assign outputs
-	assign JC[ 7 ] = LCD_CMDS[ 9 ];
-	assign JC[ 8 ] = LCD_CMDS[ 8 ];
-	assign JB = LCD_CMDS[ 7:0 ];
+	assign JC[ 7 ] = ( writeDone ) ? LCD_CMDS2[ 9 ] : LCD_CMDS1[ 9 ];
+	assign JC[ 8 ] = ( writeDone ) ? LCD_CMDS2[ 8 ] : LCD_CMDS1[ 8 ];
+	assign JB = ( writeDone ) ? LCD_CMDS2[ 7:0 ] : LCD_CMDS1[ 7:0 ];
 	assign JC[ 9 ] = ( stCur == stFunctionSet || stCur == stDisplayCtrlSet || stCur == stDisplayClear || stCur == stActWr ) ? 1'b1 : 1'b0;
 	//assign test = d1_1[ 3:0 ];
 endmodule
